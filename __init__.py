@@ -8,18 +8,13 @@ and provides functionality to train models and make predictions using the weathe
 
 import os
 import numpy as np
-import pandas as pd
-import tensorflow as tf
-from tensorflow.keras import layers, models, callbacks
+import tensorflow as tf # type: ignore
+from tensorflow.keras import layers, models, callbacks # type: ignore
 import matplotlib.pyplot as plt
-from datetime import datetime, timedelta
+from datetime import datetime
 import glob
-import pygrib
-from tqdm import tqdm
 import logging
 import cartopy.crs as ccrs
-import seaborn as sns
-from joblib import Parallel, delayed
 from PIL import Image
 import argparse
 import sys

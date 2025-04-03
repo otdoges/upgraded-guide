@@ -17,6 +17,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import joblib
+import json
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -165,12 +166,17 @@ def run_weather_system(args):
         available_dates = system.data_loader.get_available_dates()
         if available_dates:
             if not start_date:
-                # Use the most recent 90 days as default
-                all_dates = sorted(available_dates)
-                if len(all_dates) > 90:
-                    start_date = all_dates[-90]
+                # If using SPC features and no start date, use all available dates
+                if args.spc_features:
+                    logger.info("Using all available data for SPC feature training")
+                    start_date = available_dates[0]  # Use earliest date
                 else:
-                    start_date = all_dates[0]
+                    # Otherwise use the most recent 90 days as default
+                    all_dates = sorted(available_dates)
+                    if len(all_dates) > 90:
+                        start_date = all_dates[-90]
+                    else:
+                        start_date = all_dates[0]
             
             if not end_date:
                 end_date = available_dates[-1]
@@ -184,11 +190,16 @@ def run_weather_system(args):
     # Add SPC features to dataset if requested
     if args.spc_features and spc_feature_integrator:
         logger.info("Adding SPC features to dataset")
-        # Fetch historical SPC data for the date range
-        historical_data = spc_feature_integrator.fetch_historical_spc_data(start_date, end_date)
-        # Enhance dataset with SPC features
-        dataset = spc_feature_integrator.add_spc_features_to_dataset(dataset, historical_data)
-        logger.info("SPC features added to dataset")
+        try:
+            # Fetch historical SPC data for the date range
+            logger.info(f"Fetching historical SPC data for range: {start_date} to {end_date}")
+            historical_data = spc_feature_integrator.fetch_historical_spc_data(start_date, end_date)
+            # Enhance dataset with SPC features
+            dataset = spc_feature_integrator.add_spc_features_to_dataset(dataset, historical_data)
+            logger.info("SPC features added to dataset")
+        except Exception as e:
+            logger.error(f"Error adding SPC features: {e}")
+            logger.warning("Continuing with training without SPC features")
     
     # Handle location-specific forecast if requested
     if args.location and spc_integration:
@@ -661,7 +672,6 @@ def evaluate_models_with_spc(system, test_dataset, spc_integration, outlook_day)
     output_file = os.path.join(output_dir, f"evaluation_with_spc_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
     with open(output_file, 'w') as f:
         # Convert numpy values to Python native types
-        import json
         class NumpyEncoder(json.JSONEncoder):
             def default(self, obj):
                 if isinstance(obj, np.integer):
@@ -688,25 +698,34 @@ def fetch_spc_data_only(spc_integration, outlook_day):
     """
     logger.info(f"Fetching SPC data for day {outlook_day}")
     
-    # Fetch outlook
+    # Get today's date
+    today = datetime.now().strftime('%Y%m%d')
+    yesterday = (datetime.now() - timedelta(days=1)).strftime('%Y%m%d')
+    
+    # Fetch outlook for today
+    logger.info(f"Fetching SPC outlook for today ({today})")
     outlook_data = spc_integration.get_current_spc_outlook(day=outlook_day)
     
     if not outlook_data:
         logger.error(f"Could not fetch SPC outlook for day {outlook_day}")
-        return
+    else:
+        logger.info(f"Successfully fetched SPC outlook for day {outlook_day}")
     
-    logger.info(f"Successfully fetched SPC outlook for day {outlook_day}")
+    # Also fetch recent severe reports - both yesterday and today
+    logger.info(f"Fetching severe weather reports for yesterday ({yesterday}) and today ({today})")
     
-    # Also fetch recent severe reports
-    recent_reports = spc_integration.get_recent_severe_reports()
+    yesterday_reports = spc_integration.spc_fetcher.get_severe_weather_reports(date=yesterday)
+    today_reports = spc_integration.spc_fetcher.get_severe_weather_reports(date=today)
     
-    if recent_reports.empty:
+    # Combine reports
+    if yesterday_reports.empty and today_reports.empty:
         logger.warning("No recent severe weather reports found")
     else:
-        logger.info(f"Fetched {len(recent_reports)} recent severe weather reports")
+        total_reports = len(yesterday_reports) + len(today_reports)
+        logger.info(f"Fetched {total_reports} recent severe weather reports")
     
     # Fetch mesoscale discussions for today
-    today = datetime.now().strftime('%Y%m%d')
+    logger.info(f"Fetching mesoscale discussions for today ({today})")
     discussions = spc_integration.spc_fetcher.get_mesoscale_discussions(start_date=today)
     
     if not discussions:
@@ -715,6 +734,7 @@ def fetch_spc_data_only(spc_integration, outlook_day):
         logger.info(f"Fetched {len(discussions)} mesoscale discussions for today")
     
     # Fetch watches for today
+    logger.info(f"Fetching watches for today ({today})")
     watches = spc_integration.spc_fetcher.get_watches(date=today)
     
     if not watches:
@@ -726,17 +746,43 @@ def fetch_spc_data_only(spc_integration, outlook_day):
     logger.info("=== SPC Data Summary ===")
     logger.info(f"Outlook Day {outlook_day}: Valid time: {outlook_data.get('valid_time', 'Unknown')}")
     
-    if outlook_data.get('discussion_text'):
+    if outlook_data and outlook_data.get('discussion_text'):
         logger.info("Discussion excerpt: " + outlook_data['discussion_text'][:200] + "...")
     
-    if not recent_reports.empty and 'type' in recent_reports.columns:
-        logger.info(f"Recent reports: {len(recent_reports)} total")
-        report_types = recent_reports['type'].value_counts().to_dict() if 'type' in recent_reports.columns else {}
+    if not yesterday_reports.empty and 'type' in yesterday_reports.columns:
+        logger.info(f"Yesterday's reports: {len(yesterday_reports)} total")
+        report_types = yesterday_reports['type'].value_counts().to_dict() if 'type' in yesterday_reports.columns else {}
+        for rtype, count in report_types.items():
+            logger.info(f"  - {rtype}: {count}")
+    
+    if not today_reports.empty and 'type' in today_reports.columns:
+        logger.info(f"Today's reports: {len(today_reports)} total")
+        report_types = today_reports['type'].value_counts().to_dict() if 'type' in today_reports.columns else {}
         for rtype, count in report_types.items():
             logger.info(f"  - {rtype}: {count}")
     
     logger.info(f"Mesoscale discussions: {len(discussions)}")
     logger.info(f"Watches: {len(watches)}")
+    
+    # Save today's data for easy access
+    try:
+        cache_dir = os.path.join(spc_integration.spc_cache_dir, 'daily')
+        os.makedirs(cache_dir, exist_ok=True)
+        
+        summary_file = os.path.join(cache_dir, f"{today}_summary.json")
+        summary = {
+            'date': today,
+            'outlook': outlook_data,
+            'reports_count': len(today_reports),
+            'discussions_count': len(discussions),
+            'watches_count': len(watches),
+            'fetch_time': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        }
+        with open(summary_file, 'w') as f:
+            json.dump(summary, f, indent=2)
+        logger.info(f"Saved today's SPC data summary to {summary_file}")
+    except Exception as e:
+        logger.warning(f"Error saving SPC data summary: {e}")
 
 def generate_location_forecast(system, feature_extractor, spc_integration, lat, lon, forecast_date):
     """

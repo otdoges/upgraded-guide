@@ -1,8 +1,13 @@
 @echo off
 setlocal enabledelayedexpansion
 
-echo Weather Prediction System Runner
-echo ===============================
+title Weather Prediction System Runner
+
+:start
+cls
+echo ================================================
+echo        Weather Prediction System Runner         
+echo ================================================
 echo.
 
 :: Set colors for console output
@@ -18,26 +23,14 @@ set BATCH_SIZE=32
 set OUTLOOK_DAY=1
 
 :: Check for Python
+echo Checking for Python installation...
 python --version >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
+    color 0C
     echo ERROR: Python not found. Please install Python and try again.
     echo Press any key to exit...
     pause >nul
     exit /b 1
-)
-
-:: Check if requirements are installed
-echo Checking dependencies...
-pip show beautifulsoup4 >nul 2>&1
-if %ERRORLEVEL% NEQ 0 (
-    echo Installing dependencies...
-    pip install -r requirements.txt
-    if %ERRORLEVEL% NEQ 0 (
-        echo ERROR: Failed to install dependencies.
-        echo Press any key to exit...
-        pause >nul
-        exit /b 1
-    )
 )
 
 :: Create necessary directories
@@ -56,186 +49,332 @@ set TODAY=%YYYY%%MM%%DD%
 
 :menu
 cls
+echo ================================================
+echo        Weather Prediction System Runner         
+echo ================================================
 echo.
-echo Choose an option:
-echo 1. Train models with default settings
-echo 2. Train models with advanced features (safe mode - reduced batch size)
-echo 3. Generate forecast for today
-echo 4. Generate forecast with SPC verification
-echo 5. Generate location-specific forecast
-echo 6. Fetch SPC data only
-echo 7. Run full system with SPC integration
-echo 8. Evaluate existing models
-echo 9. Train models with SPC features (enhanced)
-echo 10. Custom command
-echo 0. Exit
+echo Please select an option by typing the number and pressing ENTER:
 echo.
+echo [1] Train models with default settings
+echo [2] Train models with advanced features (safe mode)
+echo [3] Generate forecast for today
+echo [4] Generate forecast with SPC verification
+echo [5] Generate location-specific forecast
+echo [6] Fetch SPC data only
+echo [7] Run full system with SPC integration
+echo [8] Evaluate existing models
+echo [9] Train models with SPC features (RECOMMENDED)
+echo [0] Exit
+echo.
+echo Type a number (0-9) and press ENTER: 
 
-set /p OPTION="Enter option (0-10): "
+:: Use choice command to capture a single key press
+set OPTION=
+set /p OPTION=">"
 
-:: Use a try-catch block for error handling
-setlocal
-if "%OPTION%"=="1" (
-    echo Running model training with default settings...
-    python run_weather_system.py --data-dir %DATA_DIR% --models-dir %MODELS_DIR% --visualizations-dir %VIS_DIR%
+if "%OPTION%"=="" goto menu
+
+:: Validate input
+set "valid="
+for %%v in (0 1 2 3 4 5 6 7 8 9) do if "%OPTION%"=="%%v" set "valid=1"
+if not defined valid (
+    echo.
+    echo Invalid option. Please enter a number between 0 and 9.
+    echo.
+    echo Press any key to continue...
+    pause >nul
+    goto menu
+)
+
+:: Process selected option
+if "%OPTION%"=="0" goto exit_program
+
+:: First check dependencies if needed
+if "%OPTION%"=="1" goto check_deps
+if "%OPTION%"=="2" goto check_deps
+if "%OPTION%"=="7" goto check_deps
+if "%OPTION%"=="9" goto check_deps
+
+:: Otherwise go directly to the appropriate section
+goto option_%OPTION%
+
+:check_deps
+:: Check if requirements are installed
+echo.
+echo Checking dependencies...
+pip show beautifulsoup4 >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+    echo.
+    echo Installing dependencies...
+    pip install -r requirements.txt
     if %ERRORLEVEL% NEQ 0 (
-        echo ERROR: Command failed with exit code %ERRORLEVEL%
+        color 0C
+        echo ERROR: Failed to install dependencies.
+        echo.
         echo Press any key to return to menu...
         pause >nul
         goto menu
     )
-    
-) else if "%OPTION%"=="2" (
-    echo Running model training with advanced features (safe mode)...
-    echo Using reduced batch size (32 instead of 64) to prevent memory issues...
-    
-    :: Run with reduced batch size to avoid memory issues
-    python run_weather_system.py --data-dir %DATA_DIR% --models-dir %MODELS_DIR% --visualizations-dir %VIS_DIR% --advanced-features --epochs 30 --batch-size 32
-    if %ERRORLEVEL% NEQ 0 (
-        echo ERROR: Command failed with exit code %ERRORLEVEL%
-        echo Press any key to return to menu...
-        pause >nul
-        goto menu
-    )
-    
-) else if "%OPTION%"=="3" (
-    echo Generating forecast for today...
-    python run_weather_system.py --forecast %TODAY% --data-dir %DATA_DIR% --models-dir %MODELS_DIR% --visualizations-dir %VIS_DIR%
-    if %ERRORLEVEL% NEQ 0 (
-        echo ERROR: Command failed with exit code %ERRORLEVEL%
-        echo Press any key to return to menu...
-        pause >nul
-        goto menu
-    )
-    
-) else if "%OPTION%"=="4" (
-    set /p FORECAST_DATE="Enter forecast date (YYYYMMDD, default: today): "
-    if "!FORECAST_DATE!"=="" set FORECAST_DATE=%TODAY%
-    
-    set /p OUTLOOK_DAY="Enter SPC outlook day (1-8, default: 1): "
-    if "!OUTLOOK_DAY!"=="" set OUTLOOK_DAY=1
-    
-    echo Generating forecast with SPC verification...
-    python run_weather_system.py --forecast !FORECAST_DATE! --use-spc --outlook-day !OUTLOOK_DAY! --data-dir %DATA_DIR% --models-dir %MODELS_DIR% --visualizations-dir %VIS_DIR%
-    if %ERRORLEVEL% NEQ 0 (
-        echo ERROR: Command failed with exit code %ERRORLEVEL%
-        echo Press any key to return to menu...
-        pause >nul
-        goto menu
-    )
-    
-) else if "%OPTION%"=="5" (
-    set /p LOCATION="Enter location as lat,lon (e.g., 35.2220,-97.4395): "
-    
-    if "!LOCATION!"=="" (
-        echo ERROR: Location is required.
-        echo Press any key to return to menu...
-        pause >nul
-        goto menu
-    )
-    
-    echo Generating location-specific forecast...
-    python run_weather_system.py --location !LOCATION! --use-spc --data-dir %DATA_DIR% --models-dir %MODELS_DIR% --visualizations-dir %VIS_DIR%
-    if %ERRORLEVEL% NEQ 0 (
-        echo ERROR: Command failed with exit code %ERRORLEVEL%
-        echo Press any key to return to menu...
-        pause >nul
-        goto menu
-    )
-    
-) else if "%OPTION%"=="6" (
-    set /p OUTLOOK_DAY="Enter SPC outlook day (1-8, default: 1): "
-    if "!OUTLOOK_DAY!"=="" set OUTLOOK_DAY=1
-    
-    echo Fetching SPC data only...
-    python run_weather_system.py --fetch-spc-only --outlook-day !OUTLOOK_DAY! --spc-cache-dir %DATA_DIR%\spc_cache
-    if %ERRORLEVEL% NEQ 0 (
-        echo ERROR: Command failed with exit code %ERRORLEVEL%
-        echo Press any key to return to menu...
-        pause >nul
-        goto menu
-    )
-    
-) else if "%OPTION%"=="7" (
-    echo Running full system with SPC integration...
-    python run_weather_system.py --data-dir %DATA_DIR% --models-dir %MODELS_DIR% --visualizations-dir %VIS_DIR% --use-spc --advanced-features
-    if %ERRORLEVEL% NEQ 0 (
-        echo ERROR: Command failed with exit code %ERRORLEVEL%
-        echo Press any key to return to menu...
-        pause >nul
-        goto menu
-    )
-    
-) else if "%OPTION%"=="8" (
-    echo Evaluating existing models...
-    python run_weather_system.py --eval-only --use-spc --data-dir %DATA_DIR% --models-dir %MODELS_DIR% --visualizations-dir %VIS_DIR%
-    if %ERRORLEVEL% NEQ 0 (
-        echo ERROR: Command failed with exit code %ERRORLEVEL%
-        echo Press any key to return to menu...
-        pause >nul
-        goto menu
-    )
-    
-) else if "%OPTION%"=="9" (
-    echo Training models with SPC features (RECOMMENDED FOR BEST RESULTS)...
-    
-    set /p START_DATE="Enter start date for training (YYYYMMDD): "
-    set /p END_DATE="Enter end date for training (YYYYMMDD): "
-    
-    if "!START_DATE!"=="" (
-        echo ERROR: Start date is required.
-        echo Press any key to return to menu...
-        pause >nul
-        goto menu
-    )
-    
-    if "!END_DATE!"=="" (
-        echo ERROR: End date is required.
-        echo Press any key to return to menu...
-        pause >nul
-        goto menu
-    )
-    
-    echo This will fetch SPC data for the date range and use it for enhanced model training.
-    echo This method produces the most accurate models by combining weather data with SPC data.
-    
-    python run_weather_system.py --data-dir %DATA_DIR% --models-dir %MODELS_DIR% --visualizations-dir %VIS_DIR% --advanced-features --spc-features --use-spc --start-date !START_DATE! --end-date !END_DATE! --epochs 50 --batch-size 32
-    if %ERRORLEVEL% NEQ 0 (
-        echo ERROR: Command failed with exit code %ERRORLEVEL%
-        echo Press any key to return to menu...
-        pause >nul
-        goto menu
-    )
-    
-) else if "%OPTION%"=="10" (
-    echo Enter custom command options (without 'python run_weather_system.py'):
-    set /p CUSTOM_OPTS=""
-    
-    echo Running custom command...
-    python run_weather_system.py %CUSTOM_OPTS%
-    if %ERRORLEVEL% NEQ 0 (
-        echo ERROR: Command failed with exit code %ERRORLEVEL%
-        echo Press any key to return to menu...
-        pause >nul
-        goto menu
-    )
-    
-) else if "%OPTION%"=="0" (
-    echo Exiting...
-    exit /b 0
-    
-) else (
-    echo Invalid option. Please try again.
+)
+goto option_%OPTION%
+
+:option_1
+cls
+echo ================================================
+echo          Train models with default settings
+echo ================================================
+echo.
+echo This will train the model with default settings.
+echo.
+echo Press ENTER to start training or ESC to return to menu.
+echo.
+choice /c EC /n /m "Press E to start or C to cancel: "
+if %ERRORLEVEL%==2 goto menu
+
+echo.
+echo Starting training with default settings...
+echo.
+python run_weather_system.py --data-dir %DATA_DIR% --models-dir %MODELS_DIR% --visualizations-dir %VIS_DIR%
+if %ERRORLEVEL% NEQ 0 (
+    color 0C
+    echo.
+    echo ERROR: Command failed with exit code %ERRORLEVEL%
+    color 0B
+)
+goto command_finished
+
+:option_2
+cls
+echo ================================================
+echo      Train models with advanced features
+echo ================================================
+echo.
+echo This will train models with advanced features using a safe batch size.
+echo.
+choice /c EC /n /m "Press E to start or C to cancel: "
+if %ERRORLEVEL%==2 goto menu
+
+echo.
+echo Starting training with advanced features...
+echo.
+python run_weather_system.py --data-dir %DATA_DIR% --models-dir %MODELS_DIR% --visualizations-dir %VIS_DIR% --advanced-features --epochs 30 --batch-size 32
+if %ERRORLEVEL% NEQ 0 (
+    color 0C
+    echo.
+    echo ERROR: Command failed with exit code %ERRORLEVEL%
+    color 0B
+)
+goto command_finished
+
+:option_3
+cls
+echo ================================================
+echo           Generate forecast for today
+echo ================================================
+echo.
+echo This will generate a forecast for today (%TODAY%).
+echo.
+choice /c EC /n /m "Press E to start or C to cancel: "
+if %ERRORLEVEL%==2 goto menu
+
+echo.
+echo Generating forecast for today...
+echo.
+python run_weather_system.py --forecast %TODAY% --data-dir %DATA_DIR% --models-dir %MODELS_DIR% --visualizations-dir %VIS_DIR%
+if %ERRORLEVEL% NEQ 0 (
+    color 0C
+    echo.
+    echo ERROR: Command failed with exit code %ERRORLEVEL%
+    color 0B
+)
+goto command_finished
+
+:option_4
+cls
+echo ================================================
+echo      Generate forecast with SPC verification
+echo ================================================
+echo.
+set FORECAST_DATE=
+set /p FORECAST_DATE="Enter forecast date (YYYYMMDD, default: today): "
+if "!FORECAST_DATE!"=="" set FORECAST_DATE=%TODAY%
+
+set OUTLOOK_DAY=
+set /p OUTLOOK_DAY="Enter SPC outlook day (1-8, default: 1): "
+if "!OUTLOOK_DAY!"=="" set OUTLOOK_DAY=1
+echo.
+echo Will generate forecast for !FORECAST_DATE! with SPC outlook day !OUTLOOK_DAY!
+echo.
+choice /c EC /n /m "Press E to start or C to cancel: "
+if %ERRORLEVEL%==2 goto menu
+
+echo.
+echo Generating forecast with SPC verification...
+echo.
+python run_weather_system.py --forecast !FORECAST_DATE! --use-spc --outlook-day !OUTLOOK_DAY! --data-dir %DATA_DIR% --models-dir %MODELS_DIR% --visualizations-dir %VIS_DIR%
+if %ERRORLEVEL% NEQ 0 (
+    color 0C
+    echo.
+    echo ERROR: Command failed with exit code %ERRORLEVEL%
+    color 0B
+)
+goto command_finished
+
+:option_5
+cls
+echo ================================================
+echo       Generate location-specific forecast
+echo ================================================
+echo.
+set LOCATION=
+set /p LOCATION="Enter location as lat,lon (e.g., 35.2220,-97.4395): "
+
+if "!LOCATION!"=="" (
+    color 0C
+    echo.
+    echo ERROR: Location is required.
+    color 0B
+    echo.
     echo Press any key to return to menu...
     pause >nul
     goto menu
 )
-endlocal
 
 echo.
-echo Command completed successfully.
-echo Results and visualizations are in the '%VIS_DIR%' directory.
+echo Will generate forecast for location: !LOCATION!
 echo.
-echo Press any key to return to the menu...
+choice /c EC /n /m "Press E to start or C to cancel: "
+if %ERRORLEVEL%==2 goto menu
+
+echo.
+echo Generating location-specific forecast...
+echo.
+python run_weather_system.py --location !LOCATION! --use-spc --data-dir %DATA_DIR% --models-dir %MODELS_DIR% --visualizations-dir %VIS_DIR%
+if %ERRORLEVEL% NEQ 0 (
+    color 0C
+    echo.
+    echo ERROR: Command failed with exit code %ERRORLEVEL%
+    color 0B
+)
+goto command_finished
+
+:option_6
+cls
+echo ================================================
+echo               Fetch SPC data only
+echo ================================================
+echo.
+echo This will automatically fetch today's SPC data.
+echo The data will be used for forecasting and verification.
+echo.
+choice /c EC /n /m "Press E to start or C to cancel: "
+if %ERRORLEVEL%==2 goto menu
+
+echo.
+echo Fetching today's SPC data...
+echo.
+python run_weather_system.py --fetch-spc-only --outlook-day 1 --spc-cache-dir %DATA_DIR%\spc_cache
+if %ERRORLEVEL% NEQ 0 (
+    color 0C
+    echo.
+    echo ERROR: Command failed with exit code %ERRORLEVEL%
+    color 0B
+)
+goto command_finished
+
+:option_7
+cls
+echo ================================================
+echo      Run full system with SPC integration
+echo ================================================
+echo.
+echo This will run the full system with SPC integration.
+echo.
+choice /c EC /n /m "Press E to start or C to cancel: "
+if %ERRORLEVEL%==2 goto menu
+
+echo.
+echo Running full system with SPC integration...
+echo.
+python run_weather_system.py --data-dir %DATA_DIR% --models-dir %MODELS_DIR% --visualizations-dir %VIS_DIR% --use-spc --advanced-features
+if %ERRORLEVEL% NEQ 0 (
+    color 0C
+    echo.
+    echo ERROR: Command failed with exit code %ERRORLEVEL%
+    color 0B
+)
+goto command_finished
+
+:option_8
+cls
+echo ================================================
+echo            Evaluate existing models
+echo ================================================
+echo.
+echo This will evaluate the existing trained models.
+echo.
+choice /c EC /n /m "Press E to start or C to cancel: "
+if %ERRORLEVEL%==2 goto menu
+
+echo.
+echo Evaluating existing models...
+echo.
+python run_weather_system.py --eval-only --use-spc --data-dir %DATA_DIR% --models-dir %MODELS_DIR% --visualizations-dir %VIS_DIR%
+if %ERRORLEVEL% NEQ 0 (
+    color 0C
+    echo.
+    echo ERROR: Command failed with exit code %ERRORLEVEL%
+    color 0B
+)
+goto command_finished
+
+:option_9
+cls
+echo ================================================
+echo    Train models with SPC features (ENHANCED)
+echo ================================================
+echo.
+echo This option produces the most accurate models by combining weather data 
+echo with Storm Prediction Center (SPC) data for enhanced training.
+echo.
+echo The system will automatically fetch all available SPC data and use it
+echo for training without requiring specific date ranges.
+echo.
+choice /c EC /n /m "Press E to start or C to cancel: "
+if %ERRORLEVEL%==2 goto menu
+
+echo.
+echo Training models with SPC features...
+echo This may take a while. Please be patient.
+echo Fetching all available SPC data...
+echo.
+python run_weather_system.py --data-dir %DATA_DIR% --models-dir %MODELS_DIR% --visualizations-dir %VIS_DIR% --advanced-features --spc-features --use-spc --epochs 50 --batch-size 32
+if %ERRORLEVEL% NEQ 0 (
+    color 0C
+    echo.
+    echo ERROR: Command failed with exit code %ERRORLEVEL%
+    color 0B
+)
+goto command_finished
+
+:command_finished
+echo.
+echo ================================================
+echo.
+echo Command execution completed.
+echo Results and visualizations are saved in the '%VIS_DIR%' directory.
+echo.
+echo ================================================
+echo.
+echo Press any key to return to the main menu...
 pause >nul
-goto menu 
+goto menu
+
+:exit_program
+cls
+echo.
+echo Thank you for using the Weather Prediction System!
+echo.
+echo Press any key to exit...
+pause >nul
+exit /b 0 

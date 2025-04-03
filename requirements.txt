@@ -1,0 +1,24 @@
+numpy>=1.26.0
+pandas>=2.1.0
+matplotlib>=3.8.0
+scikit-learn>=1.3.2
+xgboost>=2.0.0
+# tensorflow-cpu is not yet available for Python 3.13
+pillow>=10.1.0
+# cartopy may need special installation with conda
+seaborn>=0.13.0
+joblib>=1.3.2
+tqdm>=4.66.1
+geopandas>=0.14.1
+scipy>=1.11.3
+requests>=2.31.0
+netCDF4>=1.6.4
+s3fs>=2023.10.0
+dask>=2023.10.1
+# metpy may need special installation
+pyproj>=3.6.1
+h5py>=3.10.0
+statsmodels>=0.14.0
+opencv-python-headless>=4.8.1.78
+beautifulsoup4>=4.12.2
+lxml>=5.1.0

@@ -1,0 +1,108 @@
+# Weather Prediction System .gitignore
+
+# Data directories - contain large files
+data/
+data*/
+datasets/
+
+# Models - often large binary files
+models/
+*.h5
+*.pt
+*.pkl
+*.joblib
+*.onnx
+*.tflite
+*.pb
+
+# Visualizations
+visualizations/
+plots/
+figures/
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.pdf
+*.svg
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+*.manifest
+*.spec
+.pytest_cache/
+htmlcov/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*/.ipynb_checkpoints/*
+profile_default/
+ipython_config.py
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+*env*/
+.python-version
+
+# PyCharm / IDE files
+.idea/
+.project
+.pydevproject
+.vscode/
+*.swp
+*.swo
+.DS_Store
+.spyderproject
+.spyproject
+.ropeproject
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Temporary files
+tmp/
+temp/
+.temp/
+.tmp/
+*.tmp
+*~
+
+# Feature cache
+features_cache.joblib
+*_cache* 
